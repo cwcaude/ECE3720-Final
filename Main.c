@@ -57,15 +57,15 @@ short musicNotes[num_notes + 1] = {
 a, as, b, C, Cs, D, Ds, E, F, Fs, G, Gs, A, As, B, CC, CCs, DD, DDs, EE, r};
 
 short musicLengths[10] = {
-    t1, d2, t2, d4, t4, d8, t8, d16, t16, t32
+t1, d2, t2, d4, t4, d8, t8, d16, t16, t32
 };
 
 short s1[num_notes] = {
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19
 };
 
 short l1[num_notes] = {
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4
 };
 
 
@@ -78,10 +78,10 @@ short hexLets[12] = {
 };
 
 short delay[num_notes * 2] = {
-t4, t32, t4 ,t32, t4, t32, t4, t32, t4, t32, t4,t32, t4, t32, t4, t32, t4, t32, t4,t32, t4, t32, t4, t32, t4, t32, t4,t32, t4, t32, t4, t32, t4,t32, t4, t32, t4, t32, t4, t32};
+t4, t32, t4 ,t32,t4, t32, t4, t32, t4, t32, t4,t32, t4, t32, t4, t32, t4, t32, t4,t32, t4, t32, t4, t32, t4, t32, t4,t32, t4, t32, t4, t32, t4,t32, t4, t32, t4, t32, t4, t32};
 
 short SongNotes[num_notes * 2] = {
-C, r, C ,r, C, r, C, r, C, r, C,r, C, r, C, r, C, r, C,r, C, r, C, r, C, r, C,r, C, r, C, r, C,r, C, r, C, r, C, r};
+C, r, C ,r, C, r,C, r, C, r, C,r, C, r, C, r,C, r, C,r, C, r, C, r, C, r, C,r, C, r, C, r, C,r, C, r, C, r, C, r};
 
 
 /*---- Interrupt Functions ----*/
@@ -105,7 +105,8 @@ void __ISR(8) Music(void){
 // Optical Encoder Interrupt Functions
 void __ISR(15) interruptAfunction(void) {
     int AI = PORTBbits.RB7;  //Read in values from pins
-    int BI = PORTCbits.RC4;
+    int BI = PORTCbits.RC8;
+    int i;
     
     if(mode == 0)
     {
@@ -116,12 +117,14 @@ void __ISR(15) interruptAfunction(void) {
         }
         if(AI == 0)
         {
-            if(BI == 1) note++;
-            else       note--;
+            if(BI == 1) note--;
+            else       note++;
         }
         
         if(note > num_notes - 1) note = 0;
         if(note < 0) note = 19;
+
+   
     }
 
     else if(mode == 1)
@@ -133,13 +136,17 @@ void __ISR(15) interruptAfunction(void) {
         }
         if(AI == 0)
         {
-            if(BI == 1) s1[note]++;
-            else       s1[note]--;
+            if(BI == 1) s1[note]--;
+            else       s1[note]++;
         }
         
         if(s1[note] > num_notes - 1) s1[note] = 0;
         if(s1[note] < 0) s1[note] = 19;
-        delay[(int)pow(2,note)] = musicNotes[s1[note]];
+        
+        i = s1[note];
+        if(i > 12) i = i-12;
+
+    
     }
     
     else if(mode == 2)
@@ -151,31 +158,36 @@ void __ISR(15) interruptAfunction(void) {
         }
         if(AI == 0)
         {
-            if(BI == 1) l1[note]++;
-            else       l1[note]--;
+            if(BI == 1) l1[note]--;
+            else       l1[note]++;
         }
         
         if(l1[note] > 9) l1[note] = 0;
         if(l1[note] < 0) l1[note] = 9;
-        SongNotes[(int)pow(2,note)] = musicNotes[s1[note]];
+        
+        i = l1[note];
+
     }
     
-    else if(mode = 3)
+    else if(mode == 3)
     {
-        //Do nothing
+    
     }
     
-    INTCONbits.INT0EP = (AI ^ 1); //Flips the trigger
+    INTCONbits.INT3EP = (AI ^ 1); //Flips the trigger
    
-    IFS0bits.INT0IF = 0; //Clear the Flag 
+    IFS0bits.INT3IF = 0; //Set interrupt 3 flag status
 }
 
 void __ISR(7) interruptBFunction(void) {
     int AI = PORTBbits.RB7;  //Read in values from pins
-    int BI = PORTCbits.RC4; 
+    int BI = PORTCbits.RC8;
+    
+    int i;
    
     if(mode == 0)
     {
+    
         if(BI == 1)  //Rising Edge
         {
             if(AI==1) note++;   //CW
@@ -189,10 +201,16 @@ void __ISR(7) interruptBFunction(void) {
     
         if(note > num_notes - 1) note = 0;
         if(note < 0) note = 19;
+        
+        LATC = hexNums[note];
+        LATAbits.LATA1 = 1;
+        LATAbits.LATA0 = 0;
+        LATBbits.LATB15 = 0;
     }
     
     else if(mode == 1)
     {
+    
         if(BI == 1)  //Rising Edge
         {
             if(AI==1) s1[note]++;   //CW
@@ -206,10 +224,19 @@ void __ISR(7) interruptBFunction(void) {
     
         if(s1[note] > num_notes - 1) s1[note] = 0;
         if(s1[note] < 0) s1[note] = 19;
+        
+        i = s1[note];
+        if(i > 12) i = i-12;
+
+        LATC = hexLets[i];
+        LATAbits.LATA1 = 0;
+        LATAbits.LATA0 = 1;
+        LATBbits.LATB15 = 0;
     }
     
     else if(mode == 2)
     {
+    
         if(BI == 1)  //Rising Edge
         {
             if(AI==1) l1[note]++;   //CW
@@ -223,11 +250,12 @@ void __ISR(7) interruptBFunction(void) {
     
         if(l1[note] > 9) l1[note] = 0;
         if(l1[note] < 0) l1[note] = 9;
+
     }
     
     else if(mode == 3)
     {
-        //Do nothing
+    
     }
     
     INTCONbits.INT1EP = (BI ^ 1);
@@ -243,7 +271,7 @@ void delaytime(){
 main()
 {
     note = 0; //Begin on the first note
-    mode = 0; //Begin in the fist mode
+    //mode = 0; //Begin in the first mode
     
     /*---- Speaker Pin Setup and Interrupt Setup ----*/
     
@@ -252,8 +280,6 @@ main()
    
     //Enable interrupts
     INTEnableSystemMultiVectoredInt();
-
-
     
     IPC2bits.T2IP = 1;  //Timer 2 Interrupt Priority
    
@@ -266,10 +292,6 @@ main()
     
    
     note = 0; //Start at the beginning of the song
-    
-    LATAbits.LATA1 = 1;
-    LATAbits.LATA0 = 1;
-    LATBbits.LATB15 = 0;
     
     /*---- 7-Segment Display Pin Setup ----*/
     
@@ -288,14 +310,11 @@ main()
     TRISAbits.TRISA0 = 0; //Middle LED
     TRISAbits.TRISA1 = 0; //Bottom LED
     
-    TRISBbits.TRISB8 = 1; //Button Input
+    TRISAbits.TRISA7 = 1; //Button Input
     
     /*---- Optical Encoder Setup ----*/
     
-    LATAbits.LATA1 = 1;
-    LATAbits.LATA0 = 1;
-    LATBbits.LATB15 = 1;
-    
+    PPSInput(2,INT3, RPC8); //Setup C8 as INT3 PPS
     INTCONbits.INT0EP = 1; //Enable INT0
     INTCONbits.INT3EP = 1; //Enable INT3
     IEC0bits.INT0IE = 1; //Enable Interrupt 0
@@ -306,15 +325,10 @@ main()
     IPC3bits.INT3IP = 3; //Set the interrupt 3 priority
 
     INTCONbits.INT0EP = !(PORTBbits.RB7);   //Look for Rising or Falling Trigger
-    INTCONbits.INT3EP = !(PORTBbits.RB8);  
-    
-    LATAbits.LATA1 = 1;
-    LATAbits.LATA0 = 0;
-    LATBbits.LATB15 = 0;
+    INTCONbits.INT3EP = !(PORTCbits.RC8);  
     
     LATC = hexNums[0];
     
-    delaytime();
     
     PPSInput(2,INT3, RPC8); //Setup C8 as INT3 PPS
     
@@ -322,82 +336,77 @@ main()
     IEC0bits.T2IE = 1;  //Timer 2 Interrupt Enable
     
     short i;
-    
-    mode = 3;
+    int j = 0;
+    int bval = !PORTAbits.RA7;
+    int modeLocal = 0;
     
     while(1)
     {
-        
-        /*if(PORTBbits.RB8 == 1) {
-           mode++;
-           if(mode > 3) mode = 0;
-       }*/
-        
-       if(mode == 0)
-       {
-           LATC = PORTC & 0x80;
-           LATC = PORTC | hexNums[note];
-           LATAbits.LATA1 = 1;
-           LATAbits.LATA0 = 0;
-           LATBbits.LATB15 = 0;
-            
+        if(PORTAbits.RA7 == bval ) {
+           delaytime();
+           modeLocal++;
+           if(mode > 3) modeLocal = 0;
        }
+        
+        mode = modeLocal;
        
-       else if(mode == 1)
+        i = 0;
+        
+        for(j=0; j < 20; j++)
+        {
+           delay[i] = musicLengths[l1[j]];
+           SongNotes[i] = musicNotes[s1[j]];
+           i = i + 2;
+        }
+        
+        if(modeLocal == 0)
+        {
+            T2CONbits.ON = 0;//Enable Timer
+            LATC = hexNums[note];
+            LATAbits.LATA1 = 1;
+            LATAbits.LATA0 = 0;
+            LATBbits.LATB15 = 0;
+        }
+        
+        else if(modeLocal == 1)
        {
-           i = s1[note];
-           if(i > 12) i = i-12;
-           LATC = PORTC & 0x80;
-           LATC = PORTC | hexLets[i];
+           T2CONbits.ON = 0;//Enable Timer
+           LATC = hexLets[s1[note]];
            LATAbits.LATA1 = 0;
            LATAbits.LATA0 = 1;
            LATBbits.LATB15 = 0;
        }
-       
-       else if(mode == 2)
+        
+       else if(modeLocal == 2)
        {
-           i = l1[note];
-           LATC = PORTC & 0x80;
-           LATC = PORTC | hexLets[i];
+           T2CONbits.ON = 0;//Enable Timer
+           LATC = hexNums[l1[note]];
            LATAbits.LATA1 = 0;
            LATAbits.LATA0 = 0;
            LATBbits.LATB15 = 1;
        }
-       
-       else if(mode == 3)
+        else if(modeLocal == 3)
        {
            T2CONbits.ON = 1;//Enable Timer
            LATAbits.LATA1 = 1;
            LATAbits.LATA0 = 1;
            LATBbits.LATB15 = 1;
+           i = 0;
            
             for(note=0; note < num_notes * 2; note++) //Loop to play Notes
             {
+                i++;
+                if(i >= num_notes) i = note - num_notes; 
                 noteTime = 0;
-                LATC = hexNums[note];
+                LATC = hexNums[i];
                 while(noteTime < delay[note]) 
                 {
                         //Wait for note Time to be done
                         }
             }
-           mode = 0;
+           modeLocal = 1;
            T2CONbits.ON = 0;//Enable Timer
         }
-        
-        if(mode == 6)
-        {
-            for(i = 0; i< 20; i++)
-            {
-                LATC = hexNums[i];
-                LATCbits.LATC6 = 1;
-            }
-        }
-       
-       if(PORTBbits.RB8 == 0) {
-           mode++;
-           if(mode > 3) mode = 0;
-       }
-       
     }
 }
 
